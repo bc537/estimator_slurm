@@ -1,0 +1,1 @@
+{"num_points": 100, "split": 1, "feature_layers": 1, "two_local_initial_layer": "ry", "two_local_entangling_layer": "cz", "ansatz_entanglement": "linear", "ansatz_layers": 1, "maxiter": 1000, "operator": "ZZZZZZZZZZ"}

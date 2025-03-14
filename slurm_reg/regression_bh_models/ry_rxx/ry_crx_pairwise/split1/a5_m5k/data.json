@@ -1,0 +1,1 @@
+{"num_points": 2, "split": 1, "dataset": "hydrocarbon_series", "property": "Boiling Point", "initial_layer": "ry", "entangling_layer": "rxx", "two_local_initial_layer": "ry", "two_local_entangling_layer": "crx", "ansatz_entanglement": "pairwise", "ansatz_layers": 5, "maxiter": 5000, "operator": "ZZZZZZZZZZ", "bh_iterations": 5, "bh_stepsize": 5.0, "bh_temp": 0.0}
