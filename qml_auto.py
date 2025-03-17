@@ -86,25 +86,25 @@ ansatz_entanglement = str(env_vars.get('ansatz_entanglement')) #Entanglement for
 # bh_temp = 1 #Temperature for basin-hopping, if 0 then monotonic basin-hopping is carried out
 ansatz = TwoLocal(num_qubits, two_local_initial_layer, two_local_entangling_layer, reps=ansatz_layers, entanglement=ansatz_entanglement, skip_final_rotation_layer=True)
 
-backend_options = {
-    "method": "statevector",
-    "device": "CPU",
-    "max_parallel_threads": 0,
-    "max_parallel_experiments": 0,
-    "max_parallel_shots": 0,
-    "statevector_parallel_threshold": 2
-}
-run_options = {
-    "shots": None,
-    "approximation": True
-}
+# backend_options = {
+#     "method": "statevector",
+#     "device": "CPU",
+#     "max_parallel_threads": 0,
+#     "max_parallel_experiments": 0,
+#     "max_parallel_shots": 0,
+#     "statevector_parallel_threshold": 2
+# }
+# run_options = {
+#     "shots": None,
+#     "approximation": True
+# }
 #estimator = Estimator(options=dict(backend_options=backend_options))
-estimator = Estimator(backend_options=backend_options, run_options=run_options)
-estimator_qnn = EstimatorQNN(estimator=estimator, circuit=ansatz, input_params=None, observables=operator)
+#estimator = Estimator(backend_options=backend_options, run_options=run_options)
+#estimator_qnn = EstimatorQNN(estimator=estimator, circuit=ansatz, input_params=None, observables=operator)
 
 
 
-#estimator_qnn = EstimatorQNN(circuit=ansatz, input_params=None, observables=operator)
+estimator_qnn = EstimatorQNN(circuit=ansatz, input_params=None, observables=operator)
 
 def callback(weights, obj_func_eval):
     weight_vals.append(weights)
