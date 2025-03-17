@@ -125,31 +125,33 @@ newpath = f'classifier_models/{jobid}/{initial_layer}_{entangling_layer}/{two_lo
 if not os.path.exists(newpath):
     os.makedirs(newpath)
 
+i=int(env_vars.get('DATA_POINTS_INDEX'))+1
+
+newpath2 = f'{newpath}/p{i+1}'
+if not os.path.exists(newpath2):
+    os.makedirs(newpath2)
+
 print(json_dict, flush=True)
 write_json(f'{newpath}', 'data.json', json_dict)
 
-for i in range(num_points):
-    objective_vals = []
-    weight_vals = []
-    initial_point = (np.random.random(ansatz.num_parameters) - 0.5) * 2 * np.pi 
-    estimator_classifier = NeuralNetworkClassifier(estimator_qnn, optimizer=COBYLA(maxiter=maxiter), callback=callback, initial_point=initial_point)
+objective_vals = []
+weight_vals = []
+initial_point = (np.random.random(ansatz.num_parameters) - 0.5) * 2 * np.pi 
+estimator_classifier = NeuralNetworkClassifier(estimator_qnn, optimizer=COBYLA(maxiter=maxiter), callback=callback, initial_point=initial_point)
 
-    estimator_classifier.fit(train_circuits, df_train_classes)
-    objective_vals = np.array(objective_vals)
-    weight_vals = np.array(weight_vals)
-    training_scores.append(estimator_classifier.score(train_circuits, df_train_classes))
-    test_scores.append(estimator_classifier.score(test_circuits, df_test_classes))
+estimator_classifier.fit(train_circuits, df_train_classes)
+objective_vals = np.array(objective_vals)
+weight_vals = np.array(weight_vals)
+training_scores.append(estimator_classifier.score(train_circuits, df_train_classes))
+test_scores.append(estimator_classifier.score(test_circuits, df_test_classes))
 
-    newpath2 = f'{newpath}/p{i+1}'
-    if not os.path.exists(newpath2):
-        os.makedirs(newpath2)
 
-    estimator_classifier.save(f'{newpath2}/qml')
-    np.savetxt(f"{newpath2}/objective_vals", objective_vals)
-    np.savetxt(f"{newpath2}/weight_vals", weight_vals)
+estimator_classifier.save(f'{newpath2}/qml')
+np.savetxt(f"{newpath2}/objective_vals", objective_vals)
+np.savetxt(f"{newpath2}/weight_vals", weight_vals)
 
-    training_scores_save = np.array(training_scores)
-    test_scores_save = np.array(test_scores)
+training_scores_save = np.array(training_scores)
+test_scores_save = np.array(test_scores)
 
-    np.savetxt(f"{newpath}/training_scores", training_scores_save)
-    np.savetxt(f"{newpath}/test_scores", test_scores_save)
+np.savetxt(f"{newpath}/training_scores", training_scores_save)
+np.savetxt(f"{newpath}/test_scores", test_scores_save)

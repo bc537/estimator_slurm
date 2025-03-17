@@ -7,14 +7,15 @@ with open("config_scatter.yaml", "r") as f:
 
 split = config["split"]
 ansatz_layers = config["ansatz_layers"]
+num_data_points = config["num_data_points"][0]  # Assuming num_data_points contains only one value
 
 template = """#!/bin/sh
 #BSUB -q scafellpikeSKL
-#BSUB -W 24:00
+#BSUB -W 02:00
 #BSUB -o %J-%I.out
 #BSUB -e %J-%I.err
 #BSUB -R "span[hosts=1]"
-#BSUB -n 32
+#BSUB -n 1
 #BSUB -x
 #BSUB -J "jobarray[1-{TOTAL_JOBS}]"
 
@@ -24,8 +25,10 @@ ansatz_layers=({ansatz_layers})
 # Calculate the indices
 INDEX=$((LSB_REMOTEINDEX - 1))
 NUM_ANSATZ_LAYERS={NUM_ANSATZ_LAYERS}
-SPLIT_INDEX=$((INDEX / NUM_ANSATZ_LAYERS))
-ANSATZ_LAYERS_INDEX=$((INDEX % NUM_ANSATZ_LAYERS))
+NUM_SPLIT={NUM_SPLIT}
+SPLIT_INDEX=$((INDEX / (NUM_ANSATZ_LAYERS * {NUM_DATA_POINTS})))
+ANSATZ_LAYERS_INDEX=$(((INDEX / {NUM_DATA_POINTS}) % NUM_ANSATZ_LAYERS))
+DATA_POINTS_INDEX=$((INDEX % {NUM_DATA_POINTS}))
 
 # Assign individual values
 split=${{split[SPLIT_INDEX]}}
@@ -46,10 +49,11 @@ echo "operator='IIIIZZIIII'" >> $ENV_VARS_FILE
 echo "two_local_initial_layer='ry'" >> $ENV_VARS_FILE
 echo "two_local_entangling_layer='crx'" >> $ENV_VARS_FILE
 echo "ansatz_entanglement='pairwise'" >> $ENV_VARS_FILE
-echo "num_points=100" >> $ENV_VARS_FILE
+echo "num_points={NUM_DATA_POINTS}" >> $ENV_VARS_FILE
 echo "PYTHONUNBUFFERED=TRUE" >> $ENV_VARS_FILE
-echo "OMP_NUM_THREADS=32" >> $ENV_VARS_FILE
+echo "OMP_NUM_THREADS=1" >> $ENV_VARS_FILE
 echo "LSB_REMOTEJID=$LSB_REMOTEJID" >> $ENV_VARS_FILE
+echo "DATA_POINTS_INDEX=$DATA_POINTS_INDEX" >> $ENV_VARS_FILE
 
 #source /lustre/scafellpike/local/HT06336/exa01/cxb47-exa01/qc1/bin/activate
 source /lustre/scafellpike/local/HT06336/exa01/dxm15-exa01/estimator_slurm/venv-me/bin/activate
@@ -73,6 +77,7 @@ echo "Debug: LSB_REMOTEINDEX=$LSB_REMOTEINDEX"
 echo "Debug: INDEX=$INDEX"
 echo "Debug: SPLIT_INDEX=$SPLIT_INDEX"
 echo "Debug: ANSATZ_LAYERS_INDEX=$ANSATZ_LAYERS_INDEX"
+echo "Debug: DATA_POINTS_INDEX=$DATA_POINTS_INDEX"
 echo "Debug: split=$split"
 echo "Debug: ansatz_layers=$ansatz_layers"
 
@@ -80,15 +85,16 @@ echo "Debug: ansatz_layers=$ansatz_layers"
 rm $ENV_VARS_FILE
 """
 
-TOTAL_JOBS = len(split) * len(ansatz_layers)
+TOTAL_JOBS = len(split) * len(ansatz_layers) * num_data_points
 
 with open('job_array.bsub', 'w') as tmp:
     tmp.write(template.format(
         TOTAL_JOBS=TOTAL_JOBS,
         split=" ".join(map(str, split)),
         ansatz_layers=" ".join(map(str, ansatz_layers)),
-        NUM_ANSATZ_LAYERS=len(ansatz_layers)
+        NUM_ANSATZ_LAYERS=len(ansatz_layers),
+        NUM_SPLIT=len(split),
+        NUM_DATA_POINTS=num_data_points
     ))
 
 os.system("bsub < job_array.bsub")
-
