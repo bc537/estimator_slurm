@@ -153,5 +153,5 @@ np.savetxt(f"{newpath2}/weight_vals", weight_vals)
 training_scores_save = np.array(training_scores)
 test_scores_save = np.array(test_scores)
 
-np.savetxt(f"{newpath}/training_scores", training_scores_save)
-np.savetxt(f"{newpath}/test_scores", test_scores_save)
+np.savetxt(f"{newpath2}/training_scores", training_scores_save)
+np.savetxt(f"{newpath2}/test_scores", test_scores_save)

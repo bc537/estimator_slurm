@@ -16,7 +16,6 @@ template = """#!/bin/sh
 #BSUB -e %J-%I.err
 #BSUB -R "span[hosts=1]"
 #BSUB -n 1
-#BSUB -x
 #BSUB -J "jobarray[1-{TOTAL_JOBS}]"
 
 split=({split})
