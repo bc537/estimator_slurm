@@ -25,6 +25,7 @@ with open(env_vars_file, 'r') as f:
         key, value = line.strip().split('=')
         env_vars[key] = value.strip("'")
 
+jobid = int(env_vars.get('LSB_REMOTEJID'))
 num_qubits = 10
 split = int(env_vars.get('split')) #Select split for training and testing data
 path = '../data'
@@ -100,7 +101,7 @@ json_dict = {'num_points': num_points, 'split': split, 'dataset': dataset, 'prop
              'ansatz_layers': ansatz_layers, 'maxiter': maxiter, 
              'operator': str(operator)}
 
-newpath = f'classifier_models/{initial_layer}_{entangling_layer}/{two_local_initial_layer}_{two_local_entangling_layer}_{ansatz_entanglement}/split{split}/a{ansatz_layers}_m{int(maxiter/1000)}k'
+newpath = f'classifier_models/{jobid}/{initial_layer}_{entangling_layer}/{two_local_initial_layer}_{two_local_entangling_layer}_{ansatz_entanglement}/split{split}/a{ansatz_layers}_m{int(maxiter/1000)}k'
 if not os.path.exists(newpath):
     os.makedirs(newpath)
 

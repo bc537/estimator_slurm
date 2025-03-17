@@ -14,7 +14,7 @@ template = """#!/bin/sh
 #BSUB -o %J-%I.out
 #BSUB -e %J-%I.err
 #BSUB -R "span[hosts=1]"
-#BSUB -n 1
+#BSUB -n 32
 #BSUB -x
 #BSUB -J "jobarray[1-{TOTAL_JOBS}]"
 
@@ -42,13 +42,14 @@ echo "split=$split" > $ENV_VARS_FILE
 echo "ansatz_layers=$ansatz_layers" >> $ENV_VARS_FILE
 echo "dataset='hydrocarbon_oxygen_reordered_master'" >> $ENV_VARS_FILE
 echo "maxiter=2000" >> $ENV_VARS_FILE
-echo "operator='ZZZZZZZZZZ'" >> $ENV_VARS_FILE
+echo "operator='IIIIZZIIII'" >> $ENV_VARS_FILE
 echo "two_local_initial_layer='ry'" >> $ENV_VARS_FILE
 echo "two_local_entangling_layer='crx'" >> $ENV_VARS_FILE
 echo "ansatz_entanglement='pairwise'" >> $ENV_VARS_FILE
 echo "num_points=100" >> $ENV_VARS_FILE
 echo "PYTHONUNBUFFERED=TRUE" >> $ENV_VARS_FILE
-echo "OMP_NUM_THREADS=1" >> $ENV_VARS_FILE
+echo "OMP_NUM_THREADS=32" >> $ENV_VARS_FILE
+echo "LSB_REMOTEJID=$LSB_REMOTEJID" >> $ENV_VARS_FILE
 
 #source /lustre/scafellpike/local/HT06336/exa01/cxb47-exa01/qc1/bin/activate
 source /lustre/scafellpike/local/HT06336/exa01/dxm15-exa01/estimator_slurm/venv-me/bin/activate
