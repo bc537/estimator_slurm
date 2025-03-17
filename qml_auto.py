@@ -5,6 +5,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem, DataStructs
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector
+from qiskit_aer.primitives import Estimator
 from qiskit.circuit import Parameter
 from qiskit.circuit.library import RealAmplitudes, ZZFeatureMap, TwoLocal
 from qiskit_machine_learning.optimizers import COBYLA, L_BFGS_B, SPSA
@@ -87,16 +88,18 @@ ansatz = TwoLocal(num_qubits, two_local_initial_layer, two_local_entangling_laye
 
 backend_options = {
     "method": "statevector",
-    "shots": None,
-    "approximation": True,
     "device": "CPU",
     "max_parallel_threads": 0,
     "max_parallel_experiments": 0,
     "max_parallel_shots": 0,
     "statevector_parallel_threshold": 2
 }
+run_options = {
+    "shots": None,
+    "approximation": True
+}
 #estimator = Estimator(options=dict(backend_options=backend_options))
-estimator = Estimator(backend_options=backend_options)
+estimator = Estimator(backend_options=backend_options, run_options=run_options)
 estimator_qnn = EstimatorQNN(estimator=estimator, circuit=ansatz, input_params=None, observables=operator)
 
 
