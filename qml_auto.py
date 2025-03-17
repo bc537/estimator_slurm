@@ -125,7 +125,7 @@ newpath = f'classifier_models/{jobid}/{initial_layer}_{entangling_layer}/{two_lo
 if not os.path.exists(newpath):
     os.makedirs(newpath)
 
-i=int(env_vars.get('DATA_POINTS_INDEX'))+1
+i=int(env_vars.get('DATA_POINTS_INDEX'))
 
 newpath2 = f'{newpath}/p{i+1}'
 if not os.path.exists(newpath2):
