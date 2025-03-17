@@ -16,11 +16,20 @@ from qiskit.quantum_info import Pauli, PauliList, SparsePauliOp
 from qiskit_machine_learning.optimizers import BasinHopping
 from bond_encoding.bond import coulomb_matrix, matrix_to_circuit, write_json
 import os
+import sys
 
+env_vars_file = sys.argv[1]
+env_vars = {}
+with open(env_vars_file, 'r') as f:
+    for line in f:
+        key, value = line.strip().split('=')
+        env_vars[key] = value.strip("'")
+
+jobid = int(env_vars.get('LSB_REMOTEJID'))
 num_qubits = 10
-split = int(os.environ.get('split')) #Select split for training and testing data
+split = int(env_vars.get('split')) #Select split for training and testing data
 path = '../data'
-dataset = str(os.environ.get('dataset')) #Select dataset
+dataset = str(env_vars.get('dataset')) #Select dataset
 excel_file = f'{path}/{dataset}.xlsx'
 df = pd.read_excel(excel_file, sheet_name='normalised_data_0_5')
 classes_string = 'Phase (373K)'
@@ -64,12 +73,12 @@ for i in range(num_test_points):
     test_circuits.append(circuit_test)
 
 #Variational quantum classifier
-ansatz_layers = int(os.environ.get('ansatz_layers')) #Number of ansatz layers
-maxiter = int(os.environ.get('maxiter')) #Number of iterations for the optimizer
-operator = Pauli(str(os.environ.get('operator'))) #Operator for the cost function
-two_local_initial_layer = str(os.environ.get('two_local_initial_layer')) #Initial layer for the 2-local ansatz
-two_local_entangling_layer = str(os.environ.get('two_local_entangling_layer')) #Entangling layer for the 2-local ansatz
-ansatz_entanglement = str(os.environ.get('ansatz_entanglement')) #Entanglement for the ansatz
+ansatz_layers = int(env_vars.get('ansatz_layers')) #Number of ansatz layers
+maxiter = int(env_vars.get('maxiter')) #Number of iterations for the optimizer
+operator = Pauli(str(env_vars.get('operator'))) #Operator for the cost function
+two_local_initial_layer = str(env_vars.get('two_local_initial_layer')) #Initial layer for the 2-local ansatz
+two_local_entangling_layer = str(env_vars.get('two_local_entangling_layer')) #Entangling layer for the 2-local ansatz
+ansatz_entanglement = str(env_vars.get('ansatz_entanglement')) #Entanglement for the ansatz
 # bh_iterations = 5 #Number of iterations for basin-hopping, basin-hopping happens every maxiter/bh_iterations steps
 # max_runs = maxiter / bh_iterations
 # bh_stepsize = 0.1 #Stepsize for basin-hopping
@@ -81,7 +90,7 @@ def callback(weights, obj_func_eval):
     weight_vals.append(weights)
     objective_vals.append(obj_func_eval)
 
-num_points = int(os.environ.get('num_points')) #Number of points to train
+num_points = int(env_vars.get('num_points')) #Number of points to train
 training_scores = []
 test_scores = []
 
@@ -92,7 +101,7 @@ json_dict = {'num_points': num_points, 'split': split, 'dataset': dataset, 'prop
              'ansatz_layers': ansatz_layers, 'maxiter': maxiter, 
              'operator': str(operator)}
 
-newpath = f'classifier_models/{initial_layer}_{entangling_layer}/{two_local_initial_layer}_{two_local_entangling_layer}_{ansatz_entanglement}/split{split}/a{ansatz_layers}_m{int(maxiter/1000)}k'
+newpath = f'classifier_models/{jobid}/{initial_layer}_{entangling_layer}/{two_local_initial_layer}_{two_local_entangling_layer}_{ansatz_entanglement}/split{split}/a{ansatz_layers}_m{int(maxiter/1000)}k'
 if not os.path.exists(newpath):
     os.makedirs(newpath)
 
