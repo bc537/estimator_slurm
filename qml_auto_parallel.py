@@ -1,6 +1,9 @@
 import os
 import sys
 import json
+import time
+import threading
+import psutil
 import numpy as np
 import pandas as pd
 from rdkit import Chem
@@ -14,13 +17,26 @@ from qiskit_machine_learning.optimizers import COBYLA
 from qiskit_machine_learning.neural_networks import EstimatorQNN
 from qiskit_machine_learning.algorithms.classifiers import NeuralNetworkClassifier
 from bond_encoding.bond import coulomb_matrix, matrix_to_circuit, write_json
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from joblib import Parallel, delayed
+
+# Global variable to store the maximum CPU usage observed.
+max_cpu_usage = [0]
+# Event to signal the CPU monitoring thread to stop.
+stop_event = threading.Event()
+
+def monitor_cpu_usage(interval=0.5):
+    """
+    Monitor CPU usage at a given interval (in seconds) and record the maximum CPU usage observed.
+    """
+    while not stop_event.is_set():
+        # Sample CPU usage across all cores.
+        usage = psutil.cpu_percent(interval=interval, percpu=True)
+        max_cpu_usage[0] = max(max_cpu_usage[0], max(usage))
 
 def load_env_vars(filepath: str) -> dict:
     """
     Load environment variables from a file.
-    
-    The file is expected to have lines of the form KEY='value'
+    The file should have lines in the format: KEY='value'
     """
     env_vars = {}
     with open(filepath, 'r') as f:
@@ -32,14 +48,9 @@ def load_env_vars(filepath: str) -> dict:
 def load_dataset(excel_file: str, split: int):
     """
     Load the dataset from an Excel file and split it into training and testing sets.
-    
     Returns:
-        train_smiles: numpy array of training SMILES strings.
-        train_classes: numpy array of training class labels (with 0 replaced by -1).
-        test_smiles: numpy array of testing SMILES strings.
-        test_classes: numpy array of testing class labels (with 0 replaced by -1).
-        train_property: numpy array of training property values.
-        test_property: numpy array of testing property values.
+        train_smiles, train_classes, test_smiles, test_classes,
+        train_property, test_property
     """
     df = pd.read_excel(excel_file, sheet_name='normalised_data_0_5')
     classes = df['Phase (373K)'].to_numpy()
@@ -69,7 +80,6 @@ def generate_circuits(smiles_array, num_qubits: int, feature_layers: int,
                       initial_layer: str, entangling_layer: str, atom_factor: float):
     """
     Generate quantum circuits from an array of SMILES strings.
-    
     Each SMILES string is converted to a Coulomb matrix and then to a quantum circuit.
     """
     circuits = []
@@ -91,14 +101,13 @@ def create_ansatz(num_qubits: int, ansatz_layers: int,
                     reps=ansatz_layers, entanglement=ansatz_entanglement,
                     skip_final_rotation_layer=True)
 
-def train_single_model(run_index: int, train_circuits, train_labels, test_circuits, test_labels,
-                       estimator_qnn, maxiter: int, base_save_path: str) -> tuple:
+def train_single_model_joblib(run_index: int, train_circuits, train_labels,
+                              test_circuits, test_labels, estimator_qnn, 
+                              maxiter: int, base_save_path: str) -> tuple:
     """
     Train one model instance, save its outputs, and return its training and test scores.
-    
-    This function is designed to be executed in parallel.
+    This function is designed to be executed in parallel using joblib.
     """
-    # Local containers for tracking metrics.
     objective_vals = []
     weight_vals = []
 
@@ -110,11 +119,9 @@ def train_single_model(run_index: int, train_circuits, train_labels, test_circui
     # Generate a random initial point.
     initial_point = (np.random.random(estimator_qnn.circuit.num_parameters) - 0.5) * 2 * np.pi
 
-    # Create a classifier instance with a dedicated optimizer and callback.
     classifier = NeuralNetworkClassifier(estimator_qnn, optimizer=COBYLA(maxiter=maxiter),
                                          callback=callback, initial_point=initial_point)
     
-    # Fit the model.
     classifier.fit(train_circuits, train_labels)
     train_score = classifier.score(train_circuits, train_labels)
     test_score = classifier.score(test_circuits, test_labels)
@@ -128,14 +135,12 @@ def train_single_model(run_index: int, train_circuits, train_labels, test_circui
 
     return run_index, train_score, test_score
 
-
 if __name__ == '__main__':
-    # Ensure the environment variables file is provided.
     if len(sys.argv) < 2:
         print("Usage: python script.py <env_vars_file>")
         sys.exit(1)
     
-    # Load configuration from environment variables.
+    # Load environment variables.
     env_vars_file = sys.argv[1]
     env_vars = load_env_vars(env_vars_file)
 
@@ -162,10 +167,8 @@ if __name__ == '__main__':
     data_path = '../data'
     excel_file = os.path.join(data_path, f'{dataset}.xlsx')
 
-    # Load dataset and split into training and testing data.
+    # Load dataset and generate circuits.
     train_smiles, train_classes, test_smiles, test_classes, _, _ = load_dataset(excel_file, split)
-
-    # Generate quantum circuits for both training and testing datasets.
     train_circuits = generate_circuits(train_smiles, num_qubits, feature_layers,
                                        initial_layer, entangling_layer, atom_factor)
     test_circuits = generate_circuits(test_smiles, num_qubits, feature_layers,
@@ -176,7 +179,7 @@ if __name__ == '__main__':
                            two_local_entangling_layer, ansatz_entanglement)
     estimator_qnn = EstimatorQNN(circuit=ansatz, input_params=None, observables=operator)
 
-    # Save configuration for record keeping.
+    # Prepare configuration dictionary.
     config = {
         'num_points': num_points,
         'split': split,
@@ -201,19 +204,39 @@ if __name__ == '__main__':
     print(json.dumps(config, indent=2))
     write_json(base_save_path, 'data.json', config)
 
-    # Use ProcessPoolExecutor to parallelize model training.
+    # Start the CPU monitoring thread.
+    monitor_thread = threading.Thread(target=monitor_cpu_usage, daemon=True)
+    monitor_thread.start()
+
+    # Record start time.
+    start_time = time.time()
+    
+    # Parallelize the training loop using joblib.
+    results = Parallel(n_jobs=-1)(
+        delayed(train_single_model_joblib)(
+            i, train_circuits, train_classes, test_circuits, test_classes,
+            estimator_qnn, maxiter, base_save_path
+        ) for i in range(num_points)
+    )
+    
+    # Compute elapsed time.
+    elapsed_time = time.time() - start_time
+
+    # Stop the CPU monitoring thread.
+    stop_event.set()
+    monitor_thread.join()
+
+    # Aggregate scores.
     training_scores = [None] * num_points
     test_scores = [None] * num_points
-    with ProcessPoolExecutor() as executor:
-        futures = [executor.submit(train_single_model, i, train_circuits, train_classes,
-                                     test_circuits, test_classes, estimator_qnn, maxiter,
-                                     base_save_path) for i in range(num_points)]
-        
-        for future in as_completed(futures):
-            run_index, train_score, test_score = future.result()
-            training_scores[run_index] = train_score
-            test_scores[run_index] = test_score
+    for run_index, train_score, test_score in results:
+        training_scores[run_index] = train_score
+        test_scores[run_index] = test_score
 
     # Save the aggregate scores.
     np.savetxt(os.path.join(base_save_path, "training_scores.txt"), np.array(training_scores))
     np.savetxt(os.path.join(base_save_path, "test_scores.txt"), np.array(test_scores))
+
+    print(f"Time to solution: {elapsed_time:.2f} seconds")
+    print(f"Maximum CPU usage recorded: {max_cpu_usage[0]:.1f}%")
+
