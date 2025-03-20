@@ -1,0 +1,1 @@
+{"num_points": 100, "split": 4, "dataset": "hydrocarbon_oxygen_reordered_master", "property": "Phase (373K)", "initial_layer": "ry", "entangling_layer": "rxx", "two_local_initial_layer": "ry", "two_local_entangling_layer": "crx", "ansatz_entanglement": "pairwise", "ansatz_layers": 4, "maxiter": 2000, "operator": "IIIIZZIIII"}
